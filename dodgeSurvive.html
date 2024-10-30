@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DodgeSurvive by Vylex Nexys</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background-color: #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 800px;
+        }
+
+        #gameCanvas {
+            width: 100%;
+            height: 60vh;
+            background-color: #16213e;
+            border-radius: 10px;
+            touch-action: none;
+        }
+
+        .header {
+            color: #e94560;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .score-container {
+            display: flex;
+            justify-content: space-between;
+            color: #fff;
+            margin: 10px 0;
+            font-size: 1.2em;
+        }
+
+        #dodge-start-button {
+            width: 100%;
+            padding: 15px;
+            background-color: #e94560;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.2em;
+            cursor: pointer;
+            margin: 10px 0;
+            transition: background-color 0.3s;
+        }
+
+        #dodge-start-button:hover {
+            background-color: #d64157;
+        }
+
+        .instructions {
+            color: #fff;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+
+        footer {
+            width: 100%;
+            padding: 10px 0;
+            background-color: #16213e;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
+            text-align: center; /* Centering the text */
+            position: relative; /* Ensure the footer stays at the bottom */
+            bottom: 0; /* Position it at the bottom */
+            color: #e94560; /* Color for the footer text */
+        }
+
+        .branding {
+            font-size: 0.8em;
+        }
+
+        a {
+            color: #e94560; /* Link color */
+            text-decoration: none; /* No underline */
+        }
+
+        a:hover {
+            text-decoration: underline; /* Underline on hover */
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="header">DodgeSurvive</h1>
+        <div class="score-container">
+            <span id="dodge-score">Score: 0</span>
+            <span id="dodge-high-score">High Score: 0</span>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+        <button id="dodge-start-button">Start Game</button>
+        <div class="instructions">
+            <p>Desktop: Use arrow keys to move</p>
+            <p>Mobile: Touch and drag to move</p>
+        </div>
+    </div>
+    <footer>
+        <div class="branding">
+            <span>© 2024 BY <a href="https://mthembuavuyile.github.io/VylexNexys/" target="_blank" rel="noopener noreferrer">VYLEX NEXYS™</a></span>
+        </div>
+    </footer>
+    
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Set canvas size based on container
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+        
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        let player = { x: 200, y: 200, size: 20, color: "#e94560" };
+        let obstacles = [];
+        let dodgeScore = 0;
+        let dodgeHighScore = 0;
+        let isGameRunning = false;
+        let difficulty = 1;
+
+        function gameLoop() {
+            if (!isGameRunning) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw player
+            ctx.fillStyle = player.color;
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.size / 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Move and draw obstacles
+            obstacles.forEach((obstacle) => {
+                obstacle.x += obstacle.speedX;
+                obstacle.y += obstacle.speedY;
+
+                if (obstacle.x < 0 || obstacle.x > canvas.width) obstacle.speedX *= -1;
+                if (obstacle.y < 0 || obstacle.y > canvas.height) obstacle.speedY *= -1;
+
+                ctx.fillStyle = obstacle.color;
+                ctx.beginPath();
+                ctx.arc(obstacle.x, obstacle.y, obstacle.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Check collision
+                const dx = player.x - obstacle.x;
+                const dy = player.y - obstacle.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < player.size / 2 + obstacle.size / 2) {
+                    isGameRunning = false;
+                    if (dodgeScore > dodgeHighScore) {
+                        dodgeHighScore = dodgeScore;
+                        document.getElementById("dodge-high-score").textContent = `High Score: ${dodgeHighScore}`;
+                        document.getElementById("dodge-high-score-display").textContent = `High Score: ${dodgeHighScore}`;
+                    }
+                    alert(`Game over! Your score is ${dodgeScore}.`);
+                }
+            });
+
+            // Move player
+            if (keyboard.ArrowUp && player.y > player.size / 2) player.y -= 5;
+            if (keyboard.ArrowDown && player.y < canvas.height - player.size / 2) player.y += 5;
+            if (keyboard.ArrowLeft && player.x > player.size / 2) player.x -= 5;
+            if (keyboard.ArrowRight && player.x < canvas.width - player.size / 2) player.x += 5;
+
+            dodgeScore++;
+            document.getElementById("dodge-score").textContent = `Score: ${dodgeScore}`;
+
+            // Increase difficulty
+            if (dodgeScore % 500 === 0) {
+                difficulty += 0.1;
+                addObstacle();
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function addObstacle() {
+            obstacles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: 20 + Math.random() * 20,
+                speedX: (Math.random() - 0.5) * 4 * difficulty,
+                speedY: (Math.random() - 0.5) * 4 * difficulty,
+                color: `hsl(${Math.random() * 360}, 70%, 50%)`,
+            });
+        }
+
+        const keyboard = {};
+        document.addEventListener("keydown", (event) => {
+            keyboard[event.key] = true;
+        });
+        document.addEventListener("keyup", (event) => {
+            keyboard[event.key] = false;
+        });
+
+        // Add touch controls for mobile
+        let touchStartX, touchStartY;
+        canvas.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touchEndX = e.touches[0].clientX;
+            const touchEndY = e.touches[0].clientY;
+            const dx = touchEndX - touchStartX;
+            const dy = touchEndY - touchStartY;
+
+            player.x += dx * 0.1;
+            player.y += dy * 0.1;
+
+            player.x = Math.max(player.size / 2, Math.min(canvas.width - player.size / 2, player.x));
+            player.y = Math.max(player.size / 2, Math.min(canvas.height - player.size / 2, player.y));
+
+            touchStartX = touchEndX;
+            touchStartY = touchEndY;
+        });
+
+        document.getElementById("dodge-start-button").addEventListener("click", () => {
+            player = { x: canvas.width / 2, y: canvas.height / 2, size: 20, color: "#e94560" };
+            obstacles = [];
+            dodgeScore = 0;
+            difficulty = 1;
+            document.getElementById("dodge-score").textContent = `Score: ${dodgeScore}`;
+
+            for (let i = 0; i < 5; i++) {
+                addObstacle();
+            }
+
+            isGameRunning = true;
+            gameLoop();
+        });
+    </script>
+</body>
+</html>

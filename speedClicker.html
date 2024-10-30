@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speed Clicker by Vylex Nexys</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        a {
+            color: aqua;
+            text-decoration: none; /* Remove underline */
+        }
+    
+        body {
+            background-color: #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+    
+        .game-container {
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+        }
+    
+        .header {
+            color: #e94560;
+            margin-bottom: 20px;
+        }
+    
+        .score-container {
+            display: flex;
+            justify-content: space-between;
+            color: #fff;
+            margin: 10px 0;
+            font-size: 1.2em;
+        }
+    
+        #game-button {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #e94560, #d64157);
+            border: none;
+            color: white;
+            font-size: 1.5em;
+            cursor: pointer;
+            margin: 20px auto;
+            display: block;
+            transition: transform 0.1s, box-shadow 0.3s;
+            box-shadow: 0 0 20px rgba(233, 69, 96, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+    
+        #game-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    
+        #game-button:active:not(:disabled) {
+            transform: scale(0.95);
+        }
+    
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.7);
+            transform: scale(0);
+            animation: ripple 0.6s linear;
+            pointer-events: none;
+        }
+    
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+    
+        #click-start-button {
+            width: 100%;
+            padding: 15px;
+            background-color: #e94560;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.2em;
+            cursor: pointer;
+            margin: 10px 0;
+            transition: background-color 0.3s;
+        }
+    
+        #click-start-button:hover:not(:disabled) {
+            background-color: #d64157;
+        }
+    
+        #click-start-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    
+        .timer-bar {
+            width: 100%;
+            height: 10px;
+            background-color: #16213e;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+    
+        .timer-progress {
+            width: 100%;
+            height: 100%;
+            background-color: #e94560;
+            transition: width 0.1s linear;
+        }
+    
+        .stats {
+            color: #fff;
+            margin: 20px 0;
+            font-size: 1.1em;
+        }
+    
+        .branding {
+            position: fixed;
+            bottom: 10px;
+            left: 50%; /* Center horizontally */
+            transform: translateX(-50%); /* Adjust positioning */
+            color: #e94560;
+            font-size: 0.8em;
+            text-align: center; /* Center text */
+        }
+    
+        .combo-text {
+            position: absolute;
+            color: white;
+            font-weight: bold;
+            pointer-events: none;
+            animation: floatUp 0.8s forwards;
+        }
+    
+        @keyframes floatUp {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) scale(1.5);
+                opacity: 0;
+            }
+        }
+    </style>
+    </head>
+    <body>
+        <div class="game-container">
+            <h1 class="header">Speed Clicker</h1>
+            <div class="score-container">
+                <span id="click-score">Score: 0</span>
+                <span id="click-high-score">High Score: 0</span>
+            </div>
+            <div class="timer-bar">
+                <div class="timer-progress" id="timer-progress"></div>
+            </div>
+            <div id="timer">Time left: 10 seconds</div>
+            <button id="game-button" disabled>CLICK!</button>
+            <button id="click-start-button">Start Game</button>
+            <div class="stats">
+                <div id="cps">Clicks per second: 0.0</div>
+                <div id="best-cps">Best CPS: 0.0</div>
+            </div>
+        </div>
+    
+        <div class="branding">
+            <span>© 2024 <a href="https://mthembuavuyile.github.io/VylexNexys/" target="_blank">Vylex Nexys™</a> All rights reserved.</span>
+            <p>INNOVATION THROUGH PLAY</p>
+        </div>
+      
+        <script>    
+        const gameButton = document.getElementById("game-button");
+        const clickScoreDisplay = document.getElementById("click-score");
+        const timerDisplay = document.getElementById("timer");
+        const clickStartButton = document.getElementById("click-start-button");
+        const timerProgress = document.getElementById("timer-progress");
+        const cpsDisplay = document.getElementById("cps");
+        const bestCpsDisplay = document.getElementById("best-cps");
+
+        let clickScore = 0;
+        let clickHighScore = 0;
+        let timeLeft = 10;
+        let gameInterval;
+        let bestCps = 0;
+        let lastClickTime = 0;
+        let combo = 0;
+
+        function createRipple(event) {
+            const button = event.currentTarget;
+            const circle = document.createElement("span");
+            const diameter = Math.max(button.clientWidth, button.clientHeight);
+            const radius = diameter / 2;
+
+            const rect = button.getBoundingClientRect();
+            const x = event.clientX - rect.left - radius;
+            const y = event.clientY - rect.top - radius;
+
+            circle.style.width = circle.style.height = `${diameter}px`;
+            circle.style.left = `${x}px`;
+            circle.style.top = `${y}px`;
+            circle.classList.add("ripple");
+
+            const ripple = button.getElementsByClassName("ripple")[0];
+            if (ripple) {
+                ripple.remove();
+            }
+
+            button.appendChild(circle);
+        }
+
+        function createComboText() {
+            const comboText = document.createElement("div");
+            comboText.classList.add("combo-text");
+            combo++;
+            comboText.textContent = combo >= 3 ? `Combo x${combo}!` : "+1";
+            
+            const rect = gameButton.getBoundingClientRect();
+            comboText.style.left = `${Math.random() * (rect.width - 50)}px`;
+            comboText.style.top = `${Math.random() * (rect.height - 20)}px`;
+            
+            gameButton.appendChild(comboText);
+            setTimeout(() => comboText.remove(), 800);
+        }
+
+        function startSpeedClicker() {
+            clickScore = 0;
+            timeLeft = 10;
+            combo = 0;
+            clickScoreDisplay.textContent = `Score: ${clickScore}`;
+            timerDisplay.textContent = `Time left: ${timeLeft} seconds`;
+            timerProgress.style.width = "100%";
+
+            gameButton.disabled = false;
+            clickStartButton.disabled = true;
+
+            gameInterval = setInterval(() => {
+                timeLeft--;
+                timerDisplay.textContent = `Time left: ${timeLeft} seconds`;
+                timerProgress.style.width = `${(timeLeft/10) * 100}%`;
+
+                const currentCps = clickScore / (10 - timeLeft);
+                cpsDisplay.textContent = `Clicks per second: ${currentCps.toFixed(1)}`;
+
+                if (timeLeft <= 0) {
+                    clearInterval(gameInterval);
+                    gameButton.disabled = true;
+                    clickStartButton.disabled = false;
+                    
+                    const finalCps = clickScore / 10;
+                    if (finalCps > bestCps) {
+                        bestCps = finalCps;
+                        bestCpsDisplay.textContent = `Best CPS: ${bestCps.toFixed(1)}`;
+                    }
+
+                    if (clickScore > clickHighScore) {
+                        clickHighScore = clickScore;
+                        document.getElementById("click-high-score").textContent = `High Score: ${clickHighScore}`;
+                        document.getElementById("click-high-score-display").textContent = `High Score: ${clickHighScore}`;
+                    }
+                    alert(`Time's up! Your score is ${clickScore} (${finalCps.toFixed(1)} CPS)`);
+                }
+            }, 1000);
+        }
+
+        gameButton.addEventListener("click", (e) => {
+            createRipple(e);
+            createComboText();
+            clickScore++;
+            clickScoreDisplay.textContent = `Score: ${clickScore}`;
+
+            const currentTime = Date.now();
+            if (currentTime - lastClickTime > 500) {
+                combo = 0;
+            }
+            lastClickTime = currentTime;
+        });
+
+        clickStartButton.addEventListener("click", startSpeedClicker);
+    </script>
+</body>
+</html>

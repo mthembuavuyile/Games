@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkyFall - Catch the Falling Objects</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0a1e 0%, #16213e 100%);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #fff;
+        }
+        a {
+        background: linear-gradient(45deg, #ff3366, #00a3ff);
+        -webkit-background-clip: text; /* For Safari */
+        -webkit-text-fill-color: transparent; /* For Safari */
+        background-clip: text; /* For other browsers */
+        }
+        .game-container {
+            position: relative;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
+        }
+
+        #gameCanvas {
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(5px);
+        }
+
+        .game-header {
+            position: absolute;
+            top: -80px;
+            left: 0;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .company-logo {
+            font-size: 28px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #ff3366, #00a3ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .stats-container {
+            display: flex;
+            gap: 15px;
+        }
+
+        #scoreDisplay, #levelDisplay {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 18px;
+            font-weight: 500;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+
+        .game-controls {
+            position: absolute;
+            bottom: -40px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .footer {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            text-align: center;
+            padding: 10px 0;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            font-size: 14px;
+            letter-spacing: 1px;
+        }
+        .footer p {
+        margin: 5px 0;
+    }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <div class="company-logo">SkyFall</div>
+            <div class="stats-container">
+                <div id="scoreDisplay">Score: 0</div>
+                <div id="levelDisplay">Level: 1</div>
+            </div>
+        </div>
+        <canvas id="gameCanvas" width="300" height="400"></canvas>
+        <div class="game-controls">Use mouse or touch to move the basket</div>
+    </div>
+
+    <div class="footer">
+        <p>BY <a href="https://mthembuavuyile.github.io/VylexNexys/">VYLEX NEXYS™</a></p>
+        <p>INNOVATION THROUGH PLAY</p>
+
+    </div>
+
+    <script>
+    const canvas = document.getElementById('gameCanvas');
+    canvas.width = window.innerWidth * 0.6; 
+    canvas.height = window.innerHeight * 0.6; 
+
+    const ctx = canvas.getContext('2d');
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const levelDisplay = document.getElementById('levelDisplay');
+
+        let score = 0;
+        let level = 1;
+        let basketX = canvas.width / 2 - 30;
+        const basketY = canvas.height - 30;
+        const basketWidth = 60;
+        const basketHeight = 20;
+
+        const items = [];
+        const itemSize = 20;
+        let itemSpeed = 2;
+
+        function calculateLevel() {
+            return Math.floor(score / 10) + 1;
+        }
+
+        function drawBasket() {
+            const gradient = ctx.createLinearGradient(basketX, basketY, basketX + basketWidth, basketY + basketHeight);
+            gradient.addColorStop(0, '#ff3366');
+            gradient.addColorStop(1, '#00a3ff');
+            
+            ctx.fillStyle = gradient;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#00a3ff';
+            ctx.fillRect(basketX, basketY, basketWidth, basketHeight);
+            ctx.shadowBlur = 0;
+        }
+
+        function drawItem(item) {
+            const gradient = ctx.createRadialGradient(
+                item.x + itemSize/2, item.y + itemSize/2, 0,
+                item.x + itemSize/2, item.y + itemSize/2, itemSize/2
+            );
+            gradient.addColorStop(0, item.color);
+            gradient.addColorStop(1, item.color + '88');
+            
+            ctx.fillStyle = gradient;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = item.color;
+            ctx.beginPath();
+            ctx.arc(item.x + itemSize/2, item.y + itemSize/2, itemSize/2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        function createItem() {
+            const x = Math.random() * (canvas.width - itemSize);
+            const colors = ['#ff3366', '#00a3ff', '#00ff88', '#ffcc00', '#ff66cc'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            items.push({ x, y: 0, color });
+        }
+
+        function updateGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const newLevel = calculateLevel();
+            if (newLevel !== level) {
+                level = newLevel;
+                itemSpeed = 2 + (level - 1) * 0.5;
+                levelDisplay.textContent = `Level: ${level}`;
+            }
+
+            drawBasket();
+
+            items.forEach((item, index) => {
+                item.y += itemSpeed;
+                drawItem(item);
+
+                if (item.y + itemSize > basketY && item.y < basketY + basketHeight &&
+                    item.x + itemSize > basketX && item.x < basketX + basketWidth) {
+                    items.splice(index, 1);
+                    score++;
+                    scoreDisplay.textContent = `Score: ${score}`;
+                } else if (item.y > canvas.height) {
+                    items.splice(index, 1);
+                }
+            });
+
+            if (Math.random() < 0.02 + (level - 1) * 0.005) {
+                createItem();
+            }
+
+            requestAnimationFrame(updateGame);
+        }
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            basketX = e.clientX - rect.left - basketWidth / 2;
+            basketX = Math.max(0, Math.min(canvas.width - basketWidth, basketX));
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            basketX = touch.clientX - rect.left - basketWidth / 2;
+            basketX = Math.max(0, Math.min(canvas.width - basketWidth, basketX));
+        }, { passive: false });
+
+        updateGame();
+    </script>
+</body>
+</html>
